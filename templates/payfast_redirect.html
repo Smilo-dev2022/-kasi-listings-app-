@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container text-center py-5">
+    <h2>Redirecting to PayFast...</h2>
+    <div class="spinner-border text-primary my-4" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    <p>Please wait while we redirect you to the secure payment gateway.</p>
+    
+    <form id="payfast-form" action="{{ payfast_url }}" method="post">
+        {% for key, value in data.items() %}
+            <input type="hidden" name="{{ key }}" value="{{ value }}">
+        {% endfor %}
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('payfast-form').submit();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container text-center">
+    <h2>Upgrade to Premium Listing</h2>
+    <div class="card my-4 mx-auto" style="max-width: 500px;">
+        <div class="card-body">
+            <h5 class="card-title">{{ listing.title }}</h5>
+            <p class="card-text">{{ listing.location }}</p>
+            <p class="fw-bold">R{{ listing.price }}/month</p>
+            <hr>
+            <h4>Premium Fee: R20.00</h4>
+            <form action="{{ url_for('initiate_payment', listing_id=listing.id) }}" method="POST">
+                <button type="submit" class="btn btn-success btn-lg mt-3">
+                    Pay with PayFast
+                </button>
+            </form>
+        </div>
+    </div>
+    <a href="{{ url_for('home') }}" class="btn btn-outline-secondary">Skip Payment (Regular Listing)</a>
+</div>
+{% endblock %}

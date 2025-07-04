@@ -1,0 +1,6 @@
+Flask==2.2.2
+Flask-SQLAlchemy==2.5.1
+Stripe==2.67.0
+Jinja2==3.1.2
+Werkzeug==2.2.2
+gunicorn==20.1.0

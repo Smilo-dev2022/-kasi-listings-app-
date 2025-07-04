@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Listing</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    {% extends "base.html" %}
+
+    {% block content %}
+    <div class="container">
+        <h1>Create a New Listing</h1>
+        <form method="POST" action="{{ url_for('add_listing') }}">
+            {{ form.hidden_tag() }}
+            <div>
+                <label for="title">Title:</label>
+                {{ form.title(size=32) }}
+            </div>
+            <div>
+                <label for="location">Location:</label>
+                {{ form.location(size=32) }}
+            </div>
+            <div>
+                <label for="price">Price:</label>
+                {{ form.price(size=32) }}
+            </div>
+            <div>
+                <label for="description">Description:</label>
+                {{ form.description(rows=4, cols=32) }}
+            </div>
+            <div>
+                <label for="property_type">Property Type:</label>
+                {{ form.property_type() }}
+            </div>
+            <div>
+                <label for="contact">Contact:</label>
+                {{ form.contact(size=32) }}
+            </div>
+            <div>
+                <label for="is_premium">Premium Listing:</label>
+                {{ form.is_premium() }}
+            </div>
+            <div>
+                <button type="submit" class="btn btn-primary">Create Listing</button>
+            </div>
+        </form>
+        <a href="{{ url_for('home') }}" class="btn btn-secondary mt-3">Back to Listings</a>
+    </div>
+    <div class="container mt-5">
+        <h2>Available Listings</h2>
+        <ul>
+            {% for listing in listings %}
+                <li>
+                    <a href="{{ url_for('listing_detail', listing_id=listing.id) }}">{{ listing.title }}</a>
+                    <p>{{ listing.location }} - R{{ listing.price }}</p>
+                </li>
+            {% else %}
+                <li>No listings available at the moment.</li>
+            {% endfor %}
+        </ul>
+        <a href="{{ url_for('add_listing') }}" class="btn btn-primary mt-3">Add New Listing</a>
+    </div>
+    {% endblock %}
+</body>
+</html>

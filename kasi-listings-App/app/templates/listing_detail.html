@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>{{ listing.title }}</title>
+</head>
+<body>
+    {% extends "base.html" %}
+
+    {% block content %}
+    <div class="container">
+        <h1>{{ listing.title }}</h1>
+        <p><strong>Location:</strong> {{ listing.location }}</p>
+        <p><strong>Price:</strong> R{{ listing.price }}</p>
+        <p><strong>Description:</strong> {{ listing.description }}</p>
+        <p><strong>Property Type:</strong> {{ listing.property_type }}</p>
+        <p><strong>Contact:</strong> {{ listing.contact }}</p>
+        
+        {% if listing.is_premium %}
+            <div class="alert alert-warning mt-3">This is a premium listing!</div>
+        {% else %}
+            <form action="{{ url_for('premium_payment', listing_id=listing.id) }}" method="get" class="mt-3">
+                <button type="submit" class="btn btn-success">
+                    Upgrade to Premium (R20)
+                </button>
+            </form>
+        {% endif %}
+        
+        <a href="{{ url_for('home') }}" class="btn btn-secondary mt-3">Back to Listings</a>
+    </div>
+    {% endblock %}
+</body>
+</html>

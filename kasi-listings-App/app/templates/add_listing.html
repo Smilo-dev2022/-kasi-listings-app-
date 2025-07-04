@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h2 class="mb-4">Add New Listing</h2>
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+                {{ form.title.label(class="form-label") }}
+                {{ form.title(class="form-control") }}
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.location.label(class="form-label") }}
+                    {{ form.location(class="form-control") }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    {{ form.price.label(class="form-label") }}
+                    {{ form.price(class="form-control") }}
+                </div>
+            </div>
+            <div class="mb-3">
+                {{ form.description.label(class="form-label") }}
+                {{ form.description(class="form-control", rows=4) }}
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.property_type.label(class="form-label") }}
+                    {{ form.property_type(class="form-select") }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    {{ form.contact.label(class="form-label") }}
+                    {{ form.contact(class="form-control") }}
+                </div>
+            </div>
+            <div class="mb-3 form-check">
+                {{ form.is_premium(class="form-check-input", id="premium") }}
+                <label class="form-check-label" for="premium">
+                    Make this a Premium Listing (R20 - appears at top for 30 days)
+                </label>
+            </div>
+            {{ form.submit(class="btn btn-primary") }}
+        </form>
+    </div>
+</div>
+{% endblock %}
