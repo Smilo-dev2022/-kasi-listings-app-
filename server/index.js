@@ -23,6 +23,8 @@ const paymentRoutes = require('./routes/payments');
 const userRoutes = require('./routes/users');
 const searchRoutes = require('./routes/search');
 const advertisementRoutes = require('./routes/advertisements');
+const messagingRoutes = require('./routes/messaging');
+const adminRoutes = require('./routes/admin');
 
 // Security middleware
 app.use(helmet({
@@ -90,6 +92,8 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/advertisements', advertisementRoutes);
+app.use('/api/messaging', messagingRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
