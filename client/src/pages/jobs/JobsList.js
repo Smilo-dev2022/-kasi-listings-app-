@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import './Jobs.css';
 
 const JobsList = () => {
   const [jobs, setJobs] = useState([]);
-  const [filteredJobs, setFilteredJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalJobs, setTotalJobs] = useState(0);
   const [filters, setFilters] = useState({
     minSalary: '',
     maxSalary: '',
@@ -17,88 +19,46 @@ const JobsList = () => {
   const [sortBy, setSortBy] = useState('newest');
   const [viewMode, setViewMode] = useState('grid');
 
-  useEffect(() => {
-    fetchJobs();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [jobs, filters, sortBy]);
-
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
+    setLoading(true);
     try {
-      const response = await fetch('/api/jobs');
+      const params = new URLSearchParams({
+        page,
+        limit: 10,
+        sort: sortBy,
+      });
+
+      if (filters.minSalary) params.append('minSalary', filters.minSalary);
+      if (filters.maxSalary) params.append('maxSalary', filters.maxSalary);
+      if (filters.jobType) params.append('jobType', filters.jobType);
+      if (filters.category) params.append('category', filters.category);
+      if (filters.location) params.append('location', filters.location);
+      // Note: Backend does not currently support filtering by experience.
+
+      const response = await fetch(`/api/jobs?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
         setJobs(data.jobs || []);
+        setTotalPages(data.pagination.total || 0);
+        setTotalJobs(data.total || 0);
       }
     } catch (error) {
       console.error('Error fetching jobs:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, sortBy, filters]);
 
-  const applyFilters = () => {
-    let filtered = [...jobs];
-
-    // Apply salary filter
-    if (filters.minSalary) {
-      filtered = filtered.filter(job => job.salary.min >= parseFloat(filters.minSalary));
-    }
-    if (filters.maxSalary) {
-      filtered = filtered.filter(job => job.salary.max <= parseFloat(filters.maxSalary));
-    }
-
-    // Apply job type filter
-    if (filters.jobType) {
-      filtered = filtered.filter(job => job.jobType === filters.jobType);
-    }
-
-    // Apply category filter
-    if (filters.category) {
-      filtered = filtered.filter(job => job.category === filters.category);
-    }
-
-    // Apply location filter
-    if (filters.location) {
-      filtered = filtered.filter(job => 
-        job.location.address.city.toLowerCase().includes(filters.location.toLowerCase()) ||
-        job.location.address.state.toLowerCase().includes(filters.location.toLowerCase())
-      );
-    }
-
-    // Apply experience filter
-    if (filters.experience) {
-      filtered = filtered.filter(job => job.requirements.experience === filters.experience);
-    }
-
-    // Apply sorting
-    switch (sortBy) {
-      case 'salary-low':
-        filtered.sort((a, b) => a.salary.min - b.salary.min);
-        break;
-      case 'salary-high':
-        filtered.sort((a, b) => b.salary.max - a.salary.max);
-        break;
-      case 'newest':
-        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        break;
-      case 'oldest':
-        filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-        break;
-      default:
-        break;
-    }
-
-    setFilteredJobs(filtered);
-  };
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
 
   const handleFilterChange = (name, value) => {
     setFilters(prev => ({
       ...prev,
       [name]: value
     }));
+    setPage(1);
   };
 
   const clearFilters = () => {
@@ -110,13 +70,20 @@ const JobsList = () => {
       location: '',
       experience: ''
     });
+    setPage(1);
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+    }
   };
 
   const formatSalary = (min, max) => {
     const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-ZA', {
+      return new Intl.NumberFormat('en-ZA', {
         style: 'currency',
-      currency: 'ZAR',
+        currency: 'ZAR',
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
       }).format(amount);
@@ -269,7 +236,7 @@ const JobsList = () => {
         <div className="jobs-main">
           <div className="jobs-toolbar">
             <div className="results-info">
-              <span>{filteredJobs.length} jobs found</span>
+              <span>{totalJobs} jobs found</span>
             </div>
             <div className="toolbar-controls">
               <select
@@ -300,8 +267,8 @@ const JobsList = () => {
           </div>
 
           <div className={`jobs-grid ${viewMode === 'list' ? 'list-view' : ''}`}>
-            {filteredJobs.length > 0 ? (
-              filteredJobs.map(job => (
+            {jobs.length > 0 ? (
+              jobs.map(job => (
                 <Link key={job._id} to={`/jobs/${job._id}`} className="job-card">
                   <div className="job-header">
                     <div className="job-title-section">
@@ -391,10 +358,22 @@ const JobsList = () => {
               </div>
             )}
           </div>
+
+          {totalPages > 1 && (
+            <div className="pagination-controls">
+              <button onClick={() => handlePageChange(page - 1)} disabled={page === 1}>
+                Previous
+              </button>
+              <span>Page {page} of {totalPages}</span>
+              <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages}>
+                Next
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-export default JobsList; 
+export default JobsList;
