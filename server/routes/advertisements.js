@@ -110,7 +110,7 @@ router.post('/:id/checkout', /* requireAuth, */ async (req, res) => {
     if (ad.paymentStatus === 'paid') return res.status(400).json({ error: 'Ad already paid' });
 
     // Example pricing: $10 per day
-    const pricePerDay = 1000; // in cents (USD)
+    const pricePerDay = 1000; // in cents (ZAR)
     const amount = ad.durationDays * pricePerDay;
 
     const session = await stripe.checkout.sessions.create({

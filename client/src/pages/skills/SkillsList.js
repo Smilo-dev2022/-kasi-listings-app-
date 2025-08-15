@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import './Skills.css';
 
 const SkillsList = () => {
   const [skills, setSkills] = useState([]);
-  const [filteredSkills, setFilteredSkills] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalSkills, setTotalSkills] = useState(0);
   const [filters, setFilters] = useState({
     minPrice: '',
     maxPrice: '',
@@ -17,92 +19,45 @@ const SkillsList = () => {
   const [sortBy, setSortBy] = useState('rating');
   const [viewMode, setViewMode] = useState('grid');
 
-  useEffect(() => {
-    fetchSkills();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [skills, filters, sortBy]);
-
-  const fetchSkills = async () => {
+  const fetchSkills = useCallback(async () => {
+    setLoading(true);
     try {
-      const response = await fetch('/api/skills');
+      const params = new URLSearchParams({
+        page,
+        limit: 10,
+        sort: sortBy,
+      });
+
+      if (filters.minPrice) params.append('minPrice', filters.minPrice);
+      if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
+      if (filters.category) params.append('category', filters.category);
+      if (filters.location) params.append('location', filters.location);
+      // Note: Backend does not currently support filtering by rating or availability.
+
+      const response = await fetch(`/api/skills?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
         setSkills(data.skills || []);
+        setTotalPages(data.pagination.total || 0);
+        setTotalSkills(data.total || 0);
       }
     } catch (error) {
       console.error('Error fetching skills:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, sortBy, filters]);
 
-  const applyFilters = () => {
-    let filtered = [...skills];
-
-    // Apply price filter
-    if (filters.minPrice) {
-      filtered = filtered.filter(skill => skill.pricing.amount >= parseFloat(filters.minPrice));
-    }
-    if (filters.maxPrice) {
-      filtered = filtered.filter(skill => skill.pricing.amount <= parseFloat(filters.maxPrice));
-    }
-
-    // Apply category filter
-    if (filters.category) {
-      filtered = filtered.filter(skill => skill.category === filters.category);
-    }
-
-    // Apply location filter
-    if (filters.location) {
-      filtered = filtered.filter(skill => 
-        skill.location.serviceArea.cities.some(city => 
-          city.toLowerCase().includes(filters.location.toLowerCase())
-        )
-      );
-    }
-
-    // Apply rating filter
-    if (filters.rating) {
-      filtered = filtered.filter(skill => skill.rating.average >= parseFloat(filters.rating));
-    }
-
-    // Apply availability filter
-    if (filters.availability) {
-      filtered = filtered.filter(skill => skill.availability === filters.availability);
-    }
-
-    // Apply sorting
-    switch (sortBy) {
-      case 'price-low':
-        filtered.sort((a, b) => a.pricing.amount - b.pricing.amount);
-        break;
-      case 'price-high':
-        filtered.sort((a, b) => b.pricing.amount - a.pricing.amount);
-        break;
-      case 'rating':
-        filtered.sort((a, b) => b.rating.average - a.rating.average);
-        break;
-      case 'newest':
-        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        break;
-      case 'oldest':
-        filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-        break;
-      default:
-        break;
-    }
-
-    setFilteredSkills(filtered);
-  };
+  useEffect(() => {
+    fetchSkills();
+  }, [fetchSkills]);
 
   const handleFilterChange = (name, value) => {
     setFilters(prev => ({
       ...prev,
       [name]: value
     }));
+    setPage(1);
   };
 
   const clearFilters = () => {
@@ -114,13 +69,20 @@ const SkillsList = () => {
       rating: '',
       availability: ''
     });
+    setPage(1);
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+    }
   };
 
   const formatPrice = (amount, type) => {
     const formatCurrency = (value) => {
-      return new Intl.NumberFormat('en-US', {
+      return new Intl.NumberFormat('en-ZA', {
         style: 'currency',
-        currency: 'USD',
+        currency: 'ZAR',
         minimumFractionDigits: 0
       }).format(value);
     };
@@ -300,7 +262,7 @@ const SkillsList = () => {
         <div className="skills-main">
           <div className="skills-toolbar">
             <div className="results-info">
-              <span>{filteredSkills.length} services found</span>
+              <span>{totalSkills} services found</span>
             </div>
             <div className="toolbar-controls">
               <select
@@ -332,8 +294,8 @@ const SkillsList = () => {
           </div>
 
           <div className={`skills-grid ${viewMode === 'list' ? 'list-view' : ''}`}>
-            {filteredSkills.length > 0 ? (
-              filteredSkills.map(skill => (
+            {skills.length > 0 ? (
+              skills.map(skill => (
                 <Link key={skill._id} to={`/skills/${skill._id}`} className="skill-card">
                   <div className="skill-header">
                     <div className="skill-icon">
@@ -415,10 +377,22 @@ const SkillsList = () => {
               </div>
             )}
           </div>
+
+          {totalPages > 1 && (
+            <div className="pagination-controls">
+              <button onClick={() => handlePageChange(page - 1)} disabled={page === 1}>
+                Previous
+              </button>
+              <span>Page {page} of {totalPages}</span>
+              <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages}>
+                Next
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-export default SkillsList; 
+export default SkillsList;

@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import './Businesses.css';
 
 const BusinessesList = () => {
   const [businesses, setBusinesses] = useState([]);
-  const [filteredBusinesses, setFilteredBusinesses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalBusinesses, setTotalBusinesses] = useState(0);
   const [filters, setFilters] = useState({
     category: '',
     location: '',
@@ -15,80 +17,44 @@ const BusinessesList = () => {
   const [sortBy, setSortBy] = useState('rating');
   const [viewMode, setViewMode] = useState('grid');
 
-  useEffect(() => {
-    fetchBusinesses();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [businesses, filters, sortBy]);
-
-  const fetchBusinesses = async () => {
+  const fetchBusinesses = useCallback(async () => {
+    setLoading(true);
     try {
-      const response = await fetch('/api/businesses');
+      const params = new URLSearchParams({
+        page,
+        limit: 10,
+        sort: sortBy,
+      });
+
+      if (filters.category) params.append('category', filters.category);
+      if (filters.location) params.append('location', filters.location);
+      if (filters.status) params.append('status', filters.status);
+      // Note: Backend does not currently support filtering by rating.
+
+      const response = await fetch(`/api/businesses?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
         setBusinesses(data.businesses || []);
+        setTotalPages(data.pagination.total || 0);
+        setTotalBusinesses(data.total || 0);
       }
     } catch (error) {
       console.error('Error fetching businesses:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, sortBy, filters]);
 
-  const applyFilters = () => {
-    let filtered = [...businesses];
-
-    // Apply category filter
-    if (filters.category) {
-      filtered = filtered.filter(business => business.category === filters.category);
-    }
-
-    // Apply location filter
-    if (filters.location) {
-      filtered = filtered.filter(business => 
-        business.address.city.toLowerCase().includes(filters.location.toLowerCase()) ||
-        business.address.state.toLowerCase().includes(filters.location.toLowerCase())
-      );
-    }
-
-    // Apply rating filter
-    if (filters.rating) {
-      filtered = filtered.filter(business => business.rating.average >= parseFloat(filters.rating));
-    }
-
-    // Apply status filter
-    if (filters.status) {
-      filtered = filtered.filter(business => business.status === filters.status);
-    }
-
-    // Apply sorting
-    switch (sortBy) {
-      case 'rating':
-        filtered.sort((a, b) => b.rating.average - a.rating.average);
-        break;
-      case 'name':
-        filtered.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case 'newest':
-        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        break;
-      case 'oldest':
-        filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-        break;
-      default:
-        break;
-    }
-
-    setFilteredBusinesses(filtered);
-  };
+  useEffect(() => {
+    fetchBusinesses();
+  }, [fetchBusinesses]);
 
   const handleFilterChange = (name, value) => {
     setFilters(prev => ({
       ...prev,
       [name]: value
     }));
+    setPage(1);
   };
 
   const clearFilters = () => {
@@ -98,6 +64,13 @@ const BusinessesList = () => {
       rating: '',
       status: ''
     });
+    setPage(1);
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+    }
   };
 
   const renderStars = (rating) => {
@@ -271,7 +244,7 @@ const BusinessesList = () => {
         <div className="businesses-main">
           <div className="businesses-toolbar">
             <div className="results-info">
-              <span>{filteredBusinesses.length} businesses found</span>
+              <span>{totalBusinesses} businesses found</span>
             </div>
             <div className="toolbar-controls">
               <select
@@ -302,8 +275,8 @@ const BusinessesList = () => {
           </div>
 
           <div className={`businesses-grid ${viewMode === 'list' ? 'list-view' : ''}`}>
-            {filteredBusinesses.length > 0 ? (
-              filteredBusinesses.map(business => (
+            {businesses.length > 0 ? (
+              businesses.map(business => (
                 <Link key={business._id} to={`/businesses/${business._id}`} className="business-card">
                   <div className="business-header">
                     <div className="business-icon">
@@ -429,10 +402,22 @@ const BusinessesList = () => {
               </div>
             )}
           </div>
+
+          {totalPages > 1 && (
+            <div className="pagination-controls">
+              <button onClick={() => handlePageChange(page - 1)} disabled={page === 1}>
+                Previous
+              </button>
+              <span>Page {page} of {totalPages}</span>
+              <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages}>
+                Next
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-export default BusinessesList; 
+export default BusinessesList;
