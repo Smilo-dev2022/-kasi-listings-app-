@@ -18,7 +18,10 @@ router.get('/', [
     'legal-financial', 'other'
   ]),
   query('location').optional().trim(),
-  query('status').optional().isIn(['active', 'inactive', 'busy', 'away'])
+  query('status').optional().isIn(['active', 'inactive', 'busy', 'away']),
+  query('rating').optional().isFloat({ min: 0, max: 5 }),
+  query('availability').optional().isIn(['available', 'busy', 'away']),
+  query('sortBy').optional().isIn(['price-low', 'price-high', 'rating', 'newest', 'oldest'])
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -34,7 +37,10 @@ router.get('/', [
       category,
       location,
       status = 'active',
-      search
+      search,
+      rating,
+      availability,
+      sortBy
     } = req.query;
 
     // Build filter object
@@ -47,6 +53,8 @@ router.get('/', [
     }
 
     if (category) filter.category = category;
+    if (rating) filter['rating.average'] = { $gte: parseFloat(rating) };
+    if (availability) filter.availability = availability;
 
     if (location) {
       filter['location.serviceArea.cities'] = { $regex: location, $options: 'i' };
@@ -57,13 +65,34 @@ router.get('/', [
       filter.$text = { $search: search };
     }
 
+    // Build sort object
+    let sort = { isPremium: -1 };
+    switch (sortBy) {
+      case 'price-low':
+        sort['pricing.amount'] = 1;
+        break;
+      case 'price-high':
+        sort['pricing.amount'] = -1;
+        break;
+      case 'rating':
+        sort['rating.average'] = -1;
+        break;
+      case 'oldest':
+        sort.createdAt = 1;
+        break;
+      case 'newest':
+      default:
+        sort.createdAt = -1;
+        break;
+    }
+
     // Calculate skip value for pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Execute query with pagination
     const skills = await Skill.find(filter)
       .populate('provider', 'name email phone')
-      .sort({ isPremium: -1, 'rating.average': -1, createdAt: -1 }) // Premium and highly rated first
+      .sort(sort)
       .skip(skip)
       .limit(parseInt(limit));
 

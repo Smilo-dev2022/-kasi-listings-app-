@@ -14,7 +14,9 @@ router.get('/', [
   query('minBedrooms').optional().isInt({ min: 0 }).withMessage('Min bedrooms must be non-negative'),
   query('maxBedrooms').optional().isInt({ min: 0 }).withMessage('Max bedrooms must be non-negative'),
   query('city').optional().trim(),
-  query('status').optional().isIn(['available', 'rented', 'pending', 'inactive'])
+  query('status').optional().isIn(['available', 'rented', 'pending', 'inactive']),
+  query('amenities').optional().isString(),
+  query('sortBy').optional().isIn(['price-low', 'price-high', 'newest', 'oldest'])
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -32,7 +34,9 @@ router.get('/', [
       maxBedrooms,
       city,
       status = 'available',
-      search
+      search,
+      amenities,
+      sortBy
     } = req.query;
 
     // Build filter object
@@ -56,9 +60,31 @@ router.get('/', [
       filter['address.city'] = { $regex: city, $options: 'i' };
     }
 
+    if (amenities) {
+      filter.amenities = { $all: amenities.split(',') };
+    }
+
     // Text search
     if (search) {
       filter.$text = { $search: search };
+    }
+
+    // Build sort object
+    let sort = { isPremium: -1 };
+    switch (sortBy) {
+      case 'price-low':
+        sort['price.amount'] = 1;
+        break;
+      case 'price-high':
+        sort['price.amount'] = -1;
+        break;
+      case 'oldest':
+        sort.createdAt = 1;
+        break;
+      case 'newest':
+      default:
+        sort.createdAt = -1;
+        break;
     }
 
     // Calculate skip value for pagination
@@ -67,7 +93,7 @@ router.get('/', [
     // Execute query with pagination
     const rentals = await Rental.find(filter)
       .populate('landlord', 'name email phone')
-      .sort({ isPremium: -1, createdAt: -1 }) // Premium listings first
+      .sort(sort)
       .skip(skip)
       .limit(parseInt(limit));
 

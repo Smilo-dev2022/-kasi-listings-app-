@@ -18,7 +18,9 @@ router.get('/', [
     'engineering', 'science', 'legal', 'media', 'other'
   ]),
   query('location').optional().trim(),
-  query('status').optional().isIn(['active', 'closed', 'on-hold', 'draft'])
+  query('status').optional().isIn(['active', 'closed', 'on-hold', 'draft']),
+  query('experience').optional().isIn(['entry', 'mid', 'senior', 'executive']),
+  query('sortBy').optional().isIn(['salary-low', 'salary-high', 'newest', 'oldest'])
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -35,7 +37,9 @@ router.get('/', [
       category,
       location,
       status = 'active',
-      search
+      search,
+      experience,
+      sortBy
     } = req.query;
 
     // Build filter object
@@ -49,6 +53,7 @@ router.get('/', [
 
     if (jobType) filter.jobType = jobType;
     if (category) filter.category = category;
+    if (experience) filter['requirements.experience'] = experience;
 
     if (location) {
       filter['location.address.city'] = { $regex: location, $options: 'i' };
@@ -59,13 +64,31 @@ router.get('/', [
       filter.$text = { $search: search };
     }
 
+    // Build sort object
+    let sort = { isPremium: -1 };
+    switch (sortBy) {
+      case 'salary-low':
+        sort['salary.min'] = 1;
+        break;
+      case 'salary-high':
+        sort['salary.max'] = -1;
+        break;
+      case 'oldest':
+        sort.createdAt = 1;
+        break;
+      case 'newest':
+      default:
+        sort.createdAt = -1;
+        break;
+    }
+
     // Calculate skip value for pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Execute query with pagination
     const jobs = await Job.find(filter)
       .populate('employer', 'name email phone')
-      .sort({ isPremium: -1, createdAt: -1 }) // Premium jobs first
+      .sort(sort)
       .skip(skip)
       .limit(parseInt(limit));
 
